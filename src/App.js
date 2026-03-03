@@ -3,7 +3,7 @@ import { db } from "./firebase";
 import {
   collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp,
 } from "firebase/firestore";
-import { SECTIONS, SECTION_ORDER } from "./questions";
+import { SECTIONS } from "./questions";
 
 // ─── HELPERS ──────────────────────────────────────────────────────
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
