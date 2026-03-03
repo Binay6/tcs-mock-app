@@ -3,7 +3,7 @@ import { db } from "./firebase";
 import {
   collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp,
 } from "firebase/firestore";
-import { SECTIONS, SECTION_ORDER } from "./questions";
+import { SECTIONS } from "./questions";
 
 // ─── HELPERS ──────────────────────────────────────────────────────
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -243,21 +243,27 @@ function TestScreen({ candidate, onComplete }) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [secResults, setSecResults] = useState({});
   const timerRef = useRef(null);
+  const endSectionRef = useRef(null);
 
   const sec = SECTIONS[secIdx];
   const key = (i) => `${sec.id}-${i}`;
+
+  // keep ref updated so timer callback can call latest version without needing it in deps
+  useEffect(() => {
+    endSectionRef.current = endSection;
+  });
 
   useEffect(() => {
     setTimeLeft(sec.duration * 60);
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setTimeLeft((p) => {
-        if (p <= 1) { clearInterval(timerRef.current); endSection(); return 0; }
+        if (p <= 1) { clearInterval(timerRef.current); endSectionRef.current && endSectionRef.current(); return 0; }
         return p - 1;
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [secIdx]);
+  }, [secIdx, sec.duration]);
 
   const endSection = () => {
     clearInterval(timerRef.current);
@@ -375,6 +381,7 @@ function ResultsScreen({ candidate, secResults, answers, onRetake }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(true);
 
+  const { name, email, phone, college } = candidate;
   const total = SECTIONS.reduce((a, s) => a + s.questions.length, 0);
   const correct = Object.values(secResults).reduce((a, r) => a + r.correct, 0);
   const attempted = Object.values(secResults).reduce((a, r) => a + r.attempted, 0);
@@ -385,10 +392,10 @@ function ResultsScreen({ candidate, secResults, answers, onRetake }) {
     (async () => {
       try {
         await addDoc(collection(db, "scores"), {
-          name: candidate.name,
-          email: candidate.email,
-          phone: candidate.phone,
-          college: candidate.college || "",
+          name,
+          email,
+          phone,
+          college: college || "",
           score: pct,
           correct,
           total,
@@ -399,7 +406,7 @@ function ResultsScreen({ candidate, secResults, answers, onRetake }) {
       } catch (e) { console.error(e); }
       setSaving(false);
     })();
-  }, []);
+  }, [name, email, phone, college, pct, correct, total, attempted]);
 
   return (
     <div style={{ ...S.page, padding: "40px 20px" }}>
